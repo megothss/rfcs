@@ -303,8 +303,6 @@ Doing nothing leaves Ember as one of the few major frontend frameworks without d
 
 - **Should there be an `@onError` callback?** An `@onError` argument could provide a hook for error reporting/logging in addition to the `<:error>` block. This would make it easier to integrate with monitoring services. This could be added in a follow-up RFC without breaking changes.
 
-- **Should there be a programmatic retry API?** Currently, retry can only be triggered from within the `<:error>` block (via the `retry` block parameter) or automatically via `@retryWith`. A programmatic API (e.g., via a modifier or ref) could enable retry from outside the boundary. This could be explored in a follow-up.
-
 - **FastBoot and Ember Engines compatibility:** While the implementation operates at the Glimmer VM level and should work in both FastBoot and Ember Engines, real-world verification is needed. The implementation should be tested in these environments before the feature is marked as stable.
 
 ## Proof of concept
