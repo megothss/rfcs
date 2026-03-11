@@ -27,26 +27,23 @@ If a component's getter throws during render, or a helper invocation fails, the 
 
 ### Real-world need: plugin architectures
 
-Large applications like [Discourse](https://www.discourse.org/) have plugin systems where third-party code renders components within the host application's component tree. A bug in a single plugin can take down the entire page — the sidebar, the header, the content area, everything. ErrorBoundary would allow the host application to isolate plugin-rendered sections so that a failure in one plugin only affects that plugin's UI.
+Large applications with plugin or extension systems allow third-party code to render components within the host application's component tree. A bug in a single plugin can take down the entire page — the sidebar, the header, the content area, everything. ErrorBoundary would allow the host application to isolate plugin-rendered sections so that a failure in one plugin only affects that plugin's UI.
 
 ### Framework parity
 
 Every other major frontend framework provides error boundaries:
 
 - **React**: [`componentDidCatch` / `getDerivedStateFromError`](https://react.dev/reference/react/Component#catching-rendering-errors-with-an-error-boundary) (since v16, 2017)
-- **Solid**: [`<ErrorBoundary>`](https://www.solidjs.com/docs/latest/api#errorboundary)
+- **Solid**: [`<ErrorBoundary>`](https://docs.solidjs.com/concepts/control-flow/error-boundary)
 - **Vue**: [`onErrorCaptured`](https://vuejs.org/api/composition-api-lifecycle.html#onerrorcaptured)
-- **Preact**: [`componentDidCatch`](https://preactjs.com/guide/v10/components/#componentdidcatch)
+- **Preact**: [`componentDidCatch`](https://preactjs.com/guide/v10/components/#error-boundaries)
+- **Svelte**: [`<svelte:boundary>`](https://svelte.dev/docs/svelte/svelte-boundary) (since v5.3, 2024)
 
-Ember is the only major framework without declarative render-error recovery.
+Ember is one of the few remaining major frameworks without declarative render-error recovery.
 
 ### Graceful degradation
 
 ErrorBoundary enables progressive enhancement patterns: wrap non-critical UI sections (widgets, sidebars, third-party embeds) in boundaries so that failures degrade gracefully while the rest of the application remains interactive.
-
-### Route-level recovery
-
-With `@retryWith` bound to the current route name, navigating away from a broken route automatically clears the error and re-renders the content — no manual retry needed.
 
 ## Detailed design
 
@@ -282,7 +279,7 @@ In production, caught errors are not surfaced to the user beyond the fallback UI
 
 ### Prior discussion
 
-[RFC issue #518](https://github.com/emberjs/rfcs/issues/518) requested error boundaries for Ember in 2019 but was never formalized into an RFC. No community addon has been able to provide render-level error boundaries because the feature requires changes to the Glimmer VM itself. Existing addons like `ember-error-handler` catch errors at the application level (via `Ember.onerror` / `window.onerror`), not within the component tree.
+[RFC issue #518](https://github.com/emberjs/rfcs/issues/518) requested error boundaries for Ember in 2019 but was never formalized into an RFC. No community addon provides render-level error boundaries because the feature requires changes to the Glimmer VM itself. Existing addons catch errors at the application level (via `Ember.onerror` / `window.onerror`), not within the component tree.
 
 ### React's class-based API
 
@@ -298,7 +295,7 @@ An alternative name `@key` was considered for the automatic retry argument. This
 
 ### Status quo (no built-in boundary)
 
-Doing nothing leaves Ember as the only major frontend framework without declarative render-error recovery. This is particularly painful for applications with plugin architectures, where third-party code can break the host application's UI. The lack of error boundaries forces developers to either accept the risk of full-page failures or implement fragile workarounds.
+Doing nothing leaves Ember as one of the few major frontend frameworks without declarative render-error recovery. This is particularly painful for applications with plugin architectures, where third-party code can break the host application's UI. The lack of error boundaries forces developers to either accept the risk of full-page failures or implement fragile workarounds.
 
 ## Unresolved questions
 
@@ -310,7 +307,9 @@ Doing nothing leaves Ember as the only major frontend framework without declarat
 
 - **FastBoot and Ember Engines compatibility:** While the implementation operates at the Glimmer VM level and should work in both FastBoot and Ember Engines, real-world verification is needed. The implementation should be tested in these environments before the feature is marked as stable.
 
----
+## Proof of concept
 
-*Reference implementation: [megothss/ember.js#2](https://github.com/megothss/ember.js/pull/2)*
-*Live demo: [ember-error-boundary-demo](https://megothss.github.io/ember-error-boundary-demo/)*
+A working proof-of-concept implementation and interactive demo are available:
+
+- **Implementation**: [megothss/ember.js#2](https://github.com/megothss/ember.js/pull/2) — a fork of ember-source with the Glimmer VM changes, ErrorBoundary component, and test coverage
+- **Live demo**: [ember-error-boundary-demo](https://megothss.github.io/ember-error-boundary-demo/) — a standalone Ember app with scenarios covering render errors, retry/recovery, nested boundaries, sibling isolation, `@retryWith`, and more
