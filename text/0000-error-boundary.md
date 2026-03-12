@@ -25,6 +25,29 @@ Today, when a component throws during render in an Ember application, the error 
 
 If a component's getter throws during render, or a helper invocation fails, the entire render pass aborts. The DOM may be left in a partially-rendered state, and there is no way for the application to recover gracefully. The user is left staring at a broken page.
 
+```gjs
+import Component from '@glimmer/component';
+
+class BuggyWidget extends Component {
+  get title() {
+    return this.args.data.title; // throws if @data is undefined
+  }
+
+  <template>
+    <h2>{{this.title}}</h2>
+  </template>
+}
+
+<template>
+  <Header />
+  <Sidebar />
+  <BuggyWidget />  {{! this error takes down the entire page }}
+  <Footer />
+</template>
+```
+
+In this example, `BuggyWidget` throws because `@data` was not passed. But the failure isn't isolated to the widget — the entire page, including `<Header>`, `<Sidebar>`, and `<Footer>`, is left broken with no way to recover.
+
 ### Real-world need: plugin architectures
 
 Large applications with plugin or extension systems allow third-party code to render components within the host application's component tree. A bug in a single plugin can take down the entire page — the sidebar, the header, the content area, everything. ErrorBoundary would allow the host application to isolate plugin-rendered sections so that a failure in one plugin only affects that plugin's UI.
