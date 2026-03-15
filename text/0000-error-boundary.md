@@ -76,7 +76,7 @@ ErrorBoundary enables progressive enhancement patterns. Wrap non-critical UI sec
 import { ErrorBoundary } from '@ember/component';
 ```
 
-ErrorBoundary is a built-in component shipped as part of the framework, not an addon. It's available in any Ember app without additional installation.
+ErrorBoundary would be a built-in component shipped as part of the framework, not an addon. Available in any Ember app without additional installation.
 
 ### Basic usage
 
@@ -157,7 +157,7 @@ The ErrorBoundary component's template is minimal:
 {{/if}}
 ```
 
-The actual error-catching behavior is implemented at the Glimmer VM level, not in the template. The `errorBoundary: true` capability flag on the component manager signals to the VM that this component should catch errors during its child tree's render.
+The actual error-catching behavior would be implemented at the Glimmer VM level, not in the template. A new `errorBoundary: true` capability flag on the component manager would signal to the VM that this component should catch errors during its child tree's render.
 
 ### What IS caught
 
@@ -232,13 +232,13 @@ This way developers are still aware of caught errors during development, even th
 
 **ember-template-lint:** No new lint rules needed. ErrorBoundary uses standard named blocks syntax, which is already supported.
 
-**Ember Inspector:** The debug render tree is properly maintained during error recovery. `debugRenderTree.rollbackTo()` keeps the Inspector's view of the component tree consistent after an error is caught.
+**Ember Inspector:** The implementation would maintain the debug render tree during error recovery. `debugRenderTree.rollbackTo()` would keep the Inspector's view of the component tree consistent after an error is caught.
 
 **Server-side rendering (FastBoot):** ErrorBoundary operates at the Glimmer VM level and catches synchronous render errors. It should work in FastBoot without modification since FastBoot uses the same Glimmer VM for rendering. This should be verified in practice.
 
 **Ember Engines:** Engines share the same Glimmer VM instance as the host app. ErrorBoundary should work across engine boundaries. This should also be verified in practice.
 
-**TypeScript:** ErrorBoundary is fully typed. The `error` block parameter is typed as `unknown`, so you need to narrow the type before accessing properties, which is standard TypeScript practice.
+**TypeScript:** ErrorBoundary would be fully typed. The `error` block parameter would be typed as `unknown`, so you'd need to narrow the type before accessing properties, which is standard TypeScript practice.
 
 **Addons:** Addon authors can use ErrorBoundary to make their components more resilient. Host apps can wrap addon-provided components in boundaries to isolate failures.
 
