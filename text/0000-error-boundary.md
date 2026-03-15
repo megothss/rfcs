@@ -302,7 +302,7 @@ In production, caught errors are not surfaced to the user beyond the fallback UI
 
 ### Prior discussion
 
-[RFC issue #518](https://github.com/emberjs/rfcs/issues/518) requested error boundaries for Ember in 2019 but was never formalized into an RFC. No community addon provides render-level error boundaries because the feature requires changes to the Glimmer VM itself. Existing addons catch errors at the application level (via `Ember.onerror` / `window.onerror`), not within the component tree.
+[RFC issue #513](https://github.com/emberjs/rfcs/issues/513) (2019) and [RFC issue #518](https://github.com/emberjs/rfcs/issues/518) (2019) both requested error boundaries for Ember but were never formalized into an RFC. No community addon provides render-level error boundaries because the feature requires changes to the Glimmer VM itself. Existing addons catch errors at the application level (via `Ember.onerror` / `window.onerror`), not within the component tree.
 
 ### React's class-based API
 
@@ -323,8 +323,6 @@ Doing nothing leaves Ember as one of the few major frontend frameworks without d
 ## Unresolved questions
 
 - **Should ErrorBoundary catch modifier errors?** Modifiers currently run in `transaction.commit()` after VM execution. Catching modifier errors would require changes to the transaction commit phase and careful consideration of DOM state consistency. This could be addressed in a follow-up RFC.
-
-- **Should there be an `@onError` callback?** An `@onError` argument could provide a hook for error reporting/logging in addition to the `<:error>` block. This would make it easier to integrate with monitoring services. This could be added in a follow-up RFC without breaking changes.
 
 - **FastBoot and Ember Engines compatibility:** While the implementation operates at the Glimmer VM level and should work in both FastBoot and Ember Engines, real-world verification is needed. The implementation should be tested in these environments before the feature is marked as stable.
 
