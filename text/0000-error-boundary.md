@@ -236,7 +236,7 @@ This way developers are still aware of caught errors during development, even th
 
 **Server-side rendering (FastBoot):** ErrorBoundary operates at the Glimmer VM level and catches synchronous render errors. It should work in FastBoot without modification since FastBoot uses the same Glimmer VM for rendering. This should be verified in practice.
 
-**Ember Engines:** Engines share the same Glimmer VM instance as the host app. ErrorBoundary should work across engine boundaries. This should also be verified in practice.
+**Ember Engines:** ErrorBoundary should work within a single engine's component tree. This needs real-world verification.
 
 **TypeScript:** ErrorBoundary would be fully typed. The `error` block parameter would be typed as `unknown`, so you'd need to narrow the type before accessing properties, which is standard TypeScript practice.
 
@@ -314,7 +314,7 @@ React implements error boundaries via class component lifecycle methods (`compon
 
 ### `@key` instead of `@retryWith`
 
-An alternative name `@key` was considered for the automatic retry argument. We rejected it because `@key` in Ember's `{{#each}}` helper represents a property path for identity tracking, not a reactive value for triggering side effects. `@retryWith` communicates the "retry" intent clearly and avoids confusion with existing Ember concepts.
+An alternative name `@key` was considered for the automatic retry argument. This was rejected because `@key` in Ember's `{{#each}}` helper represents a property path for identity tracking, not a reactive value for triggering side effects. `@retryWith` communicates the "retry" intent clearly and avoids confusion with existing Ember concepts.
 
 ### Status quo (no built-in boundary)
 
@@ -324,7 +324,7 @@ Doing nothing leaves Ember as one of the few major frameworks without declarativ
 
 - **Should ErrorBoundary catch modifier errors?** Modifiers currently run in `transaction.commit()` after VM execution. Catching modifier errors would require changes to the transaction commit phase and careful consideration of DOM state consistency. This could be addressed in a follow-up RFC.
 
-- **FastBoot and Ember Engines compatibility:** While the implementation operates at the Glimmer VM level and should work in both FastBoot and Ember Engines, real-world verification is needed. We should test in these environments before the feature is marked as stable.
+- **FastBoot and Ember Engines compatibility:** ErrorBoundary should work in FastBoot since it uses the same Glimmer VM for rendering, and within engine component trees. These environments should be tested before the feature is marked as stable.
 
 ## Proof of concept
 
