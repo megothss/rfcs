@@ -302,15 +302,15 @@ In production, caught errors aren't surfaced to the user beyond the fallback UI.
 
 ### Prior discussion
 
-[RFC issue #513](https://github.com/emberjs/rfcs/issues/513) (2019) and [RFC issue #518](https://github.com/emberjs/rfcs/issues/518) (2019) both requested error boundaries for Ember but were never formalized into an RFC. No community addon provides render-level error boundaries because the feature requires changes to the Glimmer VM itself. Existing addons catch errors at the application level (via `Ember.onerror` / `window.onerror`), not within the component tree.
+[RFC issue #513](https://github.com/emberjs/rfcs/issues/513) (2019) and [RFC issue #518](https://github.com/emberjs/rfcs/issues/518) (2019) both requested error boundaries for Ember but were never formalized into an RFC. There's no known community addon that provides render-level error boundaries, likely because the feature requires changes to the Glimmer VM itself. Existing error handling addons operate at the application level (via `Ember.onerror` / `window.onerror`), not within the component tree.
 
 ### React's class-based API
 
 React implements error boundaries via class component lifecycle methods (`componentDidCatch`, `getDerivedStateFromError`). This RFC proposes named blocks instead, which:
 
-- Is more declarative and template-centric, aligning with Ember's template-first philosophy
+- Is more declarative and template-centric
 - Doesn't require a class component. ErrorBoundary works in any template context
-- Provides the `retry` function directly as a block parameter, making recovery a first-class pattern
+- Provides the `retry` function directly as a block parameter, so recovery doesn't require extra wiring
 
 ### `@key` instead of `@retryWith`
 
