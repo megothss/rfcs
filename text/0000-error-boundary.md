@@ -1,29 +1,25 @@
 ---
 stage: accepted
-start-date: 2026-03-06T00:00:00.000Z
-release-date:
+start-date: 2026-09-09T00:00:00.000Z
+release-date: # In format YYYY-MM-DDT00:00:00.000Z
 release-versions:
 teams:
   - framework
 prs:
-  accepted:
+  accepted: # Fill this in with the URL for the Proposal RFC PR
 project-link:
 suite:
 ---
 
-# ErrorBoundary Component
+# Error boundaries
 
 ## Summary
 
-Introduce a built-in `<ErrorBoundary>` component that catches synchronous errors during Glimmer VM render (initial and rerender), displays fallback UI via named blocks, and supports automatic recovery via a `@retryWith` argument. This gives Ember apps a declarative way to isolate render failures and recover gracefully, instead of letting a single broken component take down an entire page.
+Give Ember a way to contain a render error instead of letting it take down the page. A boundary catches synchronous errors thrown during Glimmer VM render, on both initial render and rerender, shows fallback content in their place, and can recover afterwards. The proposed surface is a built-in `<ErrorBoundary>` component, using named blocks for the happy path and the fallback, with a `@retryWith` argument for automatic recovery. The component is the shape suggested here, not the point of the proposal, and [Alternatives](#alternatives) covers why it was preferred to a block keyword.
 
 ## Motivation
 
 Today, when a component throws during render, the error propagates up uncaught and can leave the page in a broken or unresponsive state. There's no declarative mechanism to catch these errors, display fallback UI, or recover without a full page reload. This is a significant gap in Ember's component model.
-
-### No built-in error recovery
-
-If a component's getter throws during render, or a helper invocation fails, the entire render pass aborts. The DOM may be left partially rendered, and there's no way for the app to recover gracefully. The user is left staring at a broken page.
 
 ```gjs
 import Component from '@glimmer/component';
@@ -64,16 +60,12 @@ Every other major frontend framework provides error boundaries:
 
 Ember is one of the few remaining major frameworks without declarative render-error recovery.
 
-### Graceful degradation
-
-ErrorBoundary enables progressive enhancement patterns. Wrap non-critical UI sections (widgets, sidebars, third-party embeds) in boundaries so that failures degrade gracefully while the rest of the app stays interactive.
-
 ## Detailed design
 
 ### Import
 
 ```js
-import { ErrorBoundary } from '@ember/component';
+import { ErrorBoundary } from "@ember/component";
 ```
 
 ErrorBoundary would be a built-in component shipped as part of the framework, not an addon. Available in any Ember app without additional installation.
@@ -139,11 +131,12 @@ class MyComponent {
 `@retryWith` accepts any value: a primitive, an array, or a plain object. When the boundary is in error state and the `@retryWith` value changes (determined by shallow equality), the error is automatically cleared and the default block re-renders.
 
 Shallow equality semantics:
+
 - Primitives: compared with `===`
 - Arrays: compared element-wise (same length, each element `===`)
 - Plain objects: compared by own-property values (same keys, each value `===`)
 
-When the boundary is *not* in error state, `@retryWith` value changes are tracked but don't trigger any re-render or recovery logic. There's no performance cost in the happy path beyond the tracking overhead.
+When the boundary is _not_ in error state, `@retryWith` value changes are tracked but don't trigger any re-render or recovery logic. There's no performance cost in the happy path beyond the tracking overhead.
 
 ### Internal template
 
@@ -161,7 +154,7 @@ The actual error-catching behavior would be implemented at the Glimmer VM level,
 
 ### What IS caught
 
-ErrorBoundary catches synchronous errors that occur during the Glimmer VM's execution phase:
+It catches synchronous errors that occur during the Glimmer VM's execution phase:
 
 - Component getter/render errors: errors thrown from tracked getters accessed during render, both initial render and rerender
 - Helper invocation errors: errors thrown from helpers invoked in templates
@@ -170,14 +163,21 @@ ErrorBoundary catches synchronous errors that occur during the Glimmer VM's exec
 
 ### What is NOT caught
 
-ErrorBoundary doesn't catch:
+It doesn't catch:
 
-- Modifier install/update errors: modifiers run in `transaction.commit()` after the VM execution phase completes, outside the boundary's try/catch scope
+- Modifier install/update errors: modifiers run in `transaction.commit()`, after the VM execution phase has finished and the boundary's try/catch has already exited
 - Async errors: errors in `setTimeout`, `requestAnimationFrame`, Promise rejections, `ember-concurrency` tasks, etc.
 - Errors during component destruction: destructor callbacks run outside the render pass
 - Errors in event handlers: `{{on "click" this.handleClick}}` errors aren't render errors
 
-This is intentional. ErrorBoundary catches errors during the synchronous Glimmer VM execution pass. Async error handling is a separate concern best addressed by application-level patterns (e.g., `ember-concurrency`, route error substates).
+The boundary's scope is the synchronous Glimmer VM execution pass. Async error handling is a separate concern, better served by application-level patterns.
+
+Modifiers deserve a longer answer, because an uncaught modifier error is just as disruptive as an uncaught render error, and the current boundary does not help. Two things make them harder than render errors rather than merely out of scope:
+
+1. **They run outside the window.** Modifiers are invoked during `transaction.commit()`, once the VM pass the boundary wraps has already completed. Catching them means extending the boundary into the commit phase, which is a separate change to the transaction lifecycle.
+2. **Recovery does not mean the same thing.** Recovering from a render error means discarding the DOM the failed render produced. A modifier's whole purpose is to reach outside that model: it may already have mutated the element, attached listeners, or started external work. Removing the element does not undo those effects, so a boundary that "recovered" from a modifier error could leave the app in a worse state than one that let the error surface.
+
+Making this work would need a defined answer for what unwinding a partially applied modifier means, not just a wider `try`. That is left to a follow-up rather than assumed solvable, and it is the most significant known gap in this proposal.
 
 ### Nesting
 
@@ -312,6 +312,24 @@ React implements error boundaries via class component lifecycle methods (`compon
 - Doesn't require a class component. ErrorBoundary works in any template context
 - Provides the `retry` function directly as a block parameter, so recovery doesn't require extra wiring
 
+### Block syntax (`{{#try}}` / `{{catch}}`)
+
+The obvious alternative shape is a block form rather than a component:
+
+```hbs
+{{#try}}
+  <RiskyComponent />
+  {{catch error retry}}
+  <p>Something went wrong: {{error.message}}</p>
+{{/try}}
+```
+
+The component was chosen initially for a practical reason rather than an aesthetic one: it requires no tooling change. `<ErrorBoundary>` with `<:default>` and `<:error>` blocks is built entirely from syntax that already exists, so ember-template-lint, the Prettier template plugin, Glint, syntax highlighting and the language server all understand it on the day it ships. Nothing needs to learn a new construct.
+
+A block keyword would not be free. `{{#try}}` would have to be taught to the template compiler, and `{{catch}}` is the harder half, because it has to be a second clause inside the same block and it has to receive `error` and `retry`. The one clause templates have today, `{{else}}`, takes no parameters, so `{{catch}}` could not be built on top of it. It would be genuinely new syntax. Named blocks give us a fallback clause with parameters already.
+
+None of that makes a keyword the wrong answer, and the semantics in this RFC carry over to one unchanged. It is a statement about cost: the component form can be evaluated, and shipped, without a coordinated change across the template toolchain. If the framework team would rather spend that cost for a nicer surface syntax, this proposal does not stand in the way.
+
 ### `@key` instead of `@retryWith`
 
 An alternative name `@key` was considered for the automatic retry argument. This was rejected because `@key` in Ember's `{{#each}}` helper represents a property path for identity tracking, not a reactive value for triggering side effects. `@retryWith` communicates the "retry" intent clearly and avoids confusion with existing Ember concepts.
@@ -322,13 +340,19 @@ Doing nothing leaves Ember as one of the few major frameworks without declarativ
 
 ## Unresolved questions
 
-- **Should ErrorBoundary catch modifier errors?** Modifiers currently run in `transaction.commit()` after VM execution. Catching modifier errors would require changes to the transaction commit phase and careful consideration of DOM state consistency. This could be addressed in a follow-up RFC.
+- **Should ErrorBoundary catch modifier errors?** See [What is NOT caught](#what-is-not-caught) for why this is harder than widening the `try`. It needs a defined meaning for unwinding a partially applied modifier, and is the most likely candidate for a follow-up RFC.
 
 - **FastBoot and Ember Engines compatibility:** ErrorBoundary should work in FastBoot since it uses the same Glimmer VM for rendering, and within engine component trees. These environments should be tested before the feature is marked as stable.
 
 ## Proof of concept
 
-A working proof-of-concept implementation and interactive demo are available:
+A working prototype exists, and the scope of what it is meant to establish is narrow, so it is worth stating plainly up front.
 
-- **Implementation**: [megothss/ember.js#2](https://github.com/megothss/ember.js/pull/2), a fork of ember-source with the Glimmer VM changes, ErrorBoundary component, and test coverage
-- **Live demo**: [ember-error-boundary-demo](https://megothss.github.io/ember-error-boundary-demo/), a standalone Ember app with scenarios covering render errors, retry/recovery, nested boundaries, sibling isolation, `@retryWith`, and more
+**What it is for.** It answers one question: can this behaviour be built inside the Glimmer VM at all? A boundary has to unwind a partially completed render, including updating opcodes, the DOM produced so far, the debug render tree, and tracking state, and it was not obvious that this could be done without leaving the VM in a corrupt state. The prototype demonstrates that it can, and it makes the proposed API concrete enough to argue about.
+
+**What it is not.** It is not a proposed implementation, and it is not offered as a pull request against Ember. It was built leaning heavily on AI assistance, which was well suited to exploring an unfamiliar part of the VM quickly but does not substitute for the design judgement of people who maintain it. The code has not been reviewed to the standard Ember would require, and it should be read as evidence that the feature is achievable rather than as a suggestion of how it ought to be written. Should this RFC advance, the implementation should be designed by the framework team, informed by the prototype where useful and discarded where not.
+
+Reviewers are asked to evaluate the proposed API and semantics on their own merits. The prototype is supporting evidence, not the proposal.
+
+- **Implementation**: [megothss/ember.js#2](https://github.com/megothss/ember.js/pull/2), a fork of ember-source carrying the Glimmer VM changes, the ErrorBoundary component, and test coverage
+- **Live demo**: [ember-error-boundary-demo](https://megothss.github.io/ember-error-boundary-demo/), a standalone Ember app covering render errors, retry and recovery, nested boundaries, sibling isolation, `@retryWith`, and `{{#in-element}}` portals
